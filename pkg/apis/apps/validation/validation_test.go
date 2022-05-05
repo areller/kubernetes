@@ -942,25 +942,6 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				},
 			},
 		},
-		"empty pod creation policy": {
-			old: apps.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
-				Spec: apps.StatefulSetSpec{
-					Selector:       &metav1.LabelSelector{MatchLabels: validLabels},
-					Template:       validPodTemplate.Template,
-					UpdateStrategy: apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
-				},
-			},
-			update: apps.StatefulSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
-				Spec: apps.StatefulSetSpec{
-					Replicas:       3,
-					Selector:       &metav1.LabelSelector{MatchLabels: validLabels},
-					Template:       validPodTemplate.Template,
-					UpdateStrategy: apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
-				},
-			},
-		},
 		"invalid pod creation policy": {
 			old: apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
@@ -1044,6 +1025,8 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 
 	for testName, errorCase := range errorCases {
 		t.Run(testName, func(t *testing.T) {
+			errorCase.old.ObjectMeta.ResourceVersion = "1"
+			errorCase.update.ObjectMeta.ResourceVersion = "1"
 			if errs := ValidateStatefulSetUpdate(&errorCase.update, &errorCase.old); len(errs) == 0 {
 				t.Errorf("expected failure: %s", testName)
 			}
