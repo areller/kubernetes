@@ -911,10 +911,22 @@ func TestValidateStatefulSetStatus(t *testing.T) {
 func TestValidateStatefulSetUpdate(t *testing.T) {
 	validLabels1 := map[string]string{"a": "b"}
 	validLabels2 := map[string]string{"c": "d"}
-	validPodTemplate := api.PodTemplate{
+	validPodTemplate1 := api.PodTemplate{
 		Template: api.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Labels: validLabels1,
+			},
+			Spec: api.PodSpec{
+				RestartPolicy: api.RestartPolicyAlways,
+				DNSPolicy:     api.DNSClusterFirst,
+				Containers:    []api.Container{{Name: "abc", Image: "image", ImagePullPolicy: "IfNotPresent"}},
+			},
+		},
+	}
+	validPodTemplate2 := api.PodTemplate{
+		Template: api.PodTemplateSpec{
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: validLabels2,
 			},
 			Spec: api.PodSpec{
 				RestartPolicy: api.RestartPolicyAlways,
@@ -983,11 +995,11 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 		},
 	}
 
-	addContainersValidTemplate := validPodTemplate.DeepCopy()
+	addContainersValidTemplate := validPodTemplate1.DeepCopy()
 	addContainersValidTemplate.Template.Spec.Containers = append(addContainersValidTemplate.Template.Spec.Containers,
 		api.Container{Name: "def", Image: "image2", ImagePullPolicy: "IfNotPresent"})
-	if len(addContainersValidTemplate.Template.Spec.Containers) != len(validPodTemplate.Template.Spec.Containers)+1 {
-		t.Errorf("failure during test setup: template %v should have more containers than template %v", addContainersValidTemplate, validPodTemplate)
+	if len(addContainersValidTemplate.Template.Spec.Containers) != len(validPodTemplate1.Template.Spec.Containers)+1 {
+		t.Errorf("failure during test setup: template %v should have more containers than template %v", addContainersValidTemplate, validPodTemplate1)
 	}
 
 	type testCase struct {
@@ -1005,7 +1017,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Selector:            &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:            validPodTemplate.Template,
+					Template:            validPodTemplate1.Template,
 					UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 				},
 			},
@@ -1015,7 +1027,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Replicas:            3,
 					Selector:            &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:            validPodTemplate.Template,
+					Template:            validPodTemplate1.Template,
 					UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 				},
 			},
@@ -1027,7 +1039,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Selector:            &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:            validPodTemplate.Template,
+					Template:            validPodTemplate1.Template,
 					UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 				},
 			},
@@ -1057,7 +1069,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Selector:            &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:            validPodTemplate.Template,
+					Template:            validPodTemplate1.Template,
 					UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 				},
 			},
@@ -1078,7 +1090,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Selector:            &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:            validPodTemplate.Template,
+					Template:            validPodTemplate1.Template,
 					UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 					PersistentVolumeClaimRetentionPolicy: &apps.StatefulSetPersistentVolumeClaimRetentionPolicy{
 						WhenDeleted: apps.RetainPersistentVolumeClaimRetentionPolicyType,
@@ -1106,7 +1118,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Selector:            &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:            validPodTemplate.Template,
+					Template:            validPodTemplate1.Template,
 					UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 				},
 			},
@@ -1118,7 +1130,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Selector:            &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:            validPodTemplate.Template,
+					Template:            validPodTemplate1.Template,
 					UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 				},
 			},
@@ -1127,7 +1139,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Selector:            &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:            validPodTemplate.Template,
+					Template:            validPodTemplate1.Template,
 					UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.OnDeleteStatefulSetStrategyType},
 				},
 			},
@@ -1139,7 +1151,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Selector:            &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:            validPodTemplate.Template,
+					Template:            validPodTemplate1.Template,
 					UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 				},
 			},
@@ -1148,7 +1160,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Selector:            &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:            validPodTemplate.Template,
+					Template:            validPodTemplate1.Template,
 					UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 					MinReadySeconds:     10,
 				},
@@ -1161,7 +1173,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Selector:            &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:            validPodTemplate.Template,
+					Template:            validPodTemplate1.Template,
 					UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 					MinReadySeconds:     5,
 				},
@@ -1171,7 +1183,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Selector:            &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:            validPodTemplate.Template,
+					Template:            validPodTemplate1.Template,
 					UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 					MinReadySeconds:     10,
 				},
@@ -1185,17 +1197,19 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 			old: apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
 				Spec: apps.StatefulSetSpec{
-					Selector:       &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:       validPodTemplate.Template,
-					UpdateStrategy: apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
+					PodManagementPolicy: apps.OrderedReadyPodManagement,
+					Selector:            &metav1.LabelSelector{MatchLabels: validLabels1},
+					Template:            validPodTemplate1.Template,
+					UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 				},
 			},
 			update: apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{Name: "abc2", Namespace: metav1.NamespaceDefault},
 				Spec: apps.StatefulSetSpec{
-					Selector:       &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:       validPodTemplate.Template,
-					UpdateStrategy: apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
+					PodManagementPolicy: apps.OrderedReadyPodManagement,
+					Selector:            &metav1.LabelSelector{MatchLabels: validLabels1},
+					Template:            validPodTemplate1.Template,
+					UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 				},
 			},
 			errs: field.ErrorList{
@@ -1207,17 +1221,19 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 			old: apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
 				Spec: apps.StatefulSetSpec{
-					Selector:       &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:       validPodTemplate.Template,
-					UpdateStrategy: apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
+					PodManagementPolicy: apps.OrderedReadyPodManagement,
+					Selector:            &metav1.LabelSelector{MatchLabels: validLabels1},
+					Template:            validPodTemplate1.Template,
+					UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 				},
 			},
 			update: apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault + "1"},
 				Spec: apps.StatefulSetSpec{
-					Selector:       &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:       validPodTemplate.Template,
-					UpdateStrategy: apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
+					PodManagementPolicy: apps.OrderedReadyPodManagement,
+					Selector:            &metav1.LabelSelector{MatchLabels: validLabels1},
+					Template:            validPodTemplate1.Template,
+					UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 				},
 			},
 			errs: field.ErrorList{
@@ -1229,17 +1245,19 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 			old: apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
 				Spec: apps.StatefulSetSpec{
-					Selector:       &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:       validPodTemplate.Template,
-					UpdateStrategy: apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
+					PodManagementPolicy: apps.OrderedReadyPodManagement,
+					Selector:            &metav1.LabelSelector{MatchLabels: validLabels1},
+					Template:            validPodTemplate1.Template,
+					UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 				},
 			},
 			update: apps.StatefulSet{
 				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
 				Spec: apps.StatefulSetSpec{
-					Selector:       &metav1.LabelSelector{MatchLabels: validLabels2},
-					Template:       validPodTemplate.Template,
-					UpdateStrategy: apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
+					PodManagementPolicy: apps.OrderedReadyPodManagement,
+					Selector:            &metav1.LabelSelector{MatchLabels: validLabels2},
+					Template:            validPodTemplate2.Template,
+					UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 				},
 			},
 			errs: field.ErrorList{
@@ -1252,7 +1270,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "abc", Namespace: metav1.NamespaceDefault},
 				Spec: apps.StatefulSetSpec{
 					Selector:       &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:       validPodTemplate.Template,
+					Template:       validPodTemplate1.Template,
 					UpdateStrategy: apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 				},
 			},
@@ -1261,7 +1279,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Selector:            &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:            validPodTemplate.Template,
+					Template:            validPodTemplate1.Template,
 					UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 				},
 			},
@@ -1276,7 +1294,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.ParallelPodManagement,
 					Selector:            &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:            validPodTemplate.Template,
+					Template:            validPodTemplate1.Template,
 					UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 				},
 			},
@@ -1285,7 +1303,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy: apps.OrderedReadyPodManagement,
 					Selector:            &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:            validPodTemplate.Template,
+					Template:            validPodTemplate1.Template,
 					UpdateStrategy:      apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 				},
 			},
@@ -1300,7 +1318,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy:  apps.OrderedReadyPodManagement,
 					Selector:             &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:             validPodTemplate.Template,
+					Template:             validPodTemplate1.Template,
 					UpdateStrategy:       apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 					VolumeClaimTemplates: []api.PersistentVolumeClaim{validPVCTemplate1},
 				},
@@ -1310,7 +1328,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy:  apps.OrderedReadyPodManagement,
 					Selector:             &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:             validPodTemplate.Template,
+					Template:             validPodTemplate1.Template,
 					UpdateStrategy:       apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 					VolumeClaimTemplates: []api.PersistentVolumeClaim{validPVCTemplate1ChangedSize},
 				},
@@ -1326,7 +1344,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy:  apps.OrderedReadyPodManagement,
 					Selector:             &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:             validPodTemplate.Template,
+					Template:             validPodTemplate1.Template,
 					UpdateStrategy:       apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 					VolumeClaimTemplates: []api.PersistentVolumeClaim{validPVCTemplate1},
 				},
@@ -1336,7 +1354,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy:  apps.OrderedReadyPodManagement,
 					Selector:             &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:             validPodTemplate.Template,
+					Template:             validPodTemplate1.Template,
 					UpdateStrategy:       apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 					VolumeClaimTemplates: []api.PersistentVolumeClaim{validPVCTemplate1ChangedClass},
 				},
@@ -1352,7 +1370,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy:  apps.OrderedReadyPodManagement,
 					Selector:             &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:             validPodTemplate.Template,
+					Template:             validPodTemplate1.Template,
 					UpdateStrategy:       apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 					VolumeClaimTemplates: []api.PersistentVolumeClaim{validPVCTemplate1},
 				},
@@ -1362,7 +1380,7 @@ func TestValidateStatefulSetUpdate(t *testing.T) {
 				Spec: apps.StatefulSetSpec{
 					PodManagementPolicy:  apps.OrderedReadyPodManagement,
 					Selector:             &metav1.LabelSelector{MatchLabels: validLabels1},
-					Template:             validPodTemplate.Template,
+					Template:             validPodTemplate1.Template,
 					UpdateStrategy:       apps.StatefulSetUpdateStrategy{Type: apps.RollingUpdateStatefulSetStrategyType},
 					VolumeClaimTemplates: []api.PersistentVolumeClaim{validPVCTemplate1, validPVCTemplate2},
 				},
