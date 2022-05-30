@@ -73,7 +73,7 @@ dependencies:
       match: configs\[Etcd\] = Config{list\.GcEtcdRegistry, "etcd", "\d+\.\d+.\d+(-(alpha|beta|rc).\d+)?(-\d+)?"}
 
   - name: "etcd-image"
-    version: 3.5.3
+    version: 3.5.4
     refPaths:
     - path: cluster/images/etcd/Makefile
       match: BUNDLED_ETCD_VERSIONS\?|LATEST_ETCD_VERSION\?
@@ -81,14 +81,14 @@ dependencies:
 
   # From https://github.com/etcd-io/etcd/blob/main/Makefile
   - name: "golang: etcd release version"
-    version: 1.16.15 # for etcd v3.5.3: https://github.com/etcd-io/etcd/blob/0452feec719fa8ad88ae343e66e9bb222965d75d/Makefile#L58
+    version: 1.16.15 # for etcd v3.5.4: https://github.com/etcd-io/etcd/blob/08407ff7600eb16c4445d5f21c4fafaf19412e24/Makefile#L58
     refPaths:
     - path: cluster/images/etcd/Makefile
       match: 'GOLANG_VERSION\?=\d+.\d+(alpha|beta|rc)?\.?(\d+)?'
 
   # Golang
   - name: "golang: upstream version"
-    version: 1.18.1
+    version: 1.18.2
     refPaths:
     - path: build/build-image/cross/VERSION
     - path: staging/publishing/rules.yaml
@@ -110,7 +110,7 @@ dependencies:
     #  match: minimum_go_version=go([0-9]+\.[0-9]+)
 
   - name: "k8s.gcr.io/kube-cross: dependents"
-    version: v1.24.0-go1.18.1-bullseye.0
+    version: v1.25.0-go1.18.2-bullseye.0
     refPaths:
     - path: build/build-image/cross/VERSION
 
@@ -140,7 +140,7 @@ dependencies:
       match: configs\[DebianIptables\] = Config{list\.BuildImageRegistry, "debian-iptables", "[a-zA-Z]+\-v((([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?)(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?)"}
 
   - name: "k8s.gcr.io/go-runner: dependents"
-    version: v2.3.1-go1.18.1-bullseye.0
+    version: v2.3.1-go1.18.2-bullseye.0
     refPaths:
     - path: build/common.sh
       match: __default_go_runner_version=
