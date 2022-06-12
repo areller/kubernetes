@@ -32,7 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 
 	apps "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/pkg/controller/history"
 )
@@ -782,7 +782,7 @@ func newPVC(name string) v1.PersistentVolumeClaim {
 		Spec: v1.PersistentVolumeClaimSpec{
 			Resources: v1.ResourceRequirements{
 				Requests: v1.ResourceList{
-					v1.ResourceStorage: *resource.NewQuantity(1, resource.BinarySI),
+					v1.ResourceStorage: *resource.NewQuantity(2, resource.BinarySI),
 				},
 			},
 		},
