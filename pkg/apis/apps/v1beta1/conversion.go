@@ -101,6 +101,14 @@ func Convert_v1beta1_StatefulSetSpec_To_apps_StatefulSetSpec(in *appsv1beta1.Sta
 	return nil
 }
 
+func Convert_apps_StatefulSetStatus_To_v1beta1_StatefulSetStatus(in *apps.StatefulSetStatus, out *appsv1beta1.StatefulSetStatus, s conversion.Scope) error {
+	if err := autoConvert_apps_StatefulSetStatus_To_v1beta1_StatefulSetStatus(in, out, s); err != nil {
+		return err
+	}
+	//out.CollisionCount = in.CollisionCount
+	return nil
+}
+
 // Convert_apps_StatefulSetSpec_To_v1beta1_StatefulSetSpec augments auto-conversion to preserve < 1.17 behavior
 // setting apiVersion/kind in nested persistent volume claim objects.
 func Convert_apps_StatefulSetSpec_To_v1beta1_StatefulSetSpec(in *apps.StatefulSetSpec, out *appsv1beta1.StatefulSetSpec, s conversion.Scope) error {

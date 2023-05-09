@@ -95,6 +95,9 @@ STORAGE_MEDIA_TYPE=${STORAGE_MEDIA_TYPE:-"application/vnd.kubernetes.protobuf"}
 PRESERVE_ETCD="${PRESERVE_ETCD:-false}"
 ENABLE_TRACING=${ENABLE_TRACING:-false}
 
+echo "preserving etcd: ${PRESERVE_ETCD}"
+echo "etcd dir: ${ETCD_DIR}"
+
 # enable Kubernetes-CSI snapshotter
 ENABLE_CSI_SNAPSHOTTER=${ENABLE_CSI_SNAPSHOTTER:-false}
 

@@ -468,6 +468,7 @@ function kube::build::ensure_data_container() {
       --volume /usr/local/go/pkg/windows_386_cgo
       --name "${KUBE_DATA_CONTAINER_NAME}"
       --hostname "${HOSTNAME}"
+      --privileged
       "${KUBE_BUILD_IMAGE}"
       chown -R "${USER_ID}":"${GROUP_ID}"
         "${REMOTE_ROOT}"
@@ -498,6 +499,7 @@ function kube::build::run_build_command_ex() {
     "--name=${container_name}"
     "--user=$(id -u):$(id -g)"
     "--hostname=${HOSTNAME}"
+    "--privileged"
     "${DOCKER_MOUNT_ARGS[@]}"
   )
 
@@ -563,6 +565,9 @@ function kube::build::run_build_command_ex() {
 
   local -ra docker_cmd=(
     "${DOCKER[@]}" run "${docker_run_opts[@]}" "${KUBE_BUILD_IMAGE}")
+
+  # print docker_cmd
+  echo "==== Running '${docker_cmd[*]}'"
 
   # Clean up container from any previous run
   kube::build::destroy_container "${container_name}"

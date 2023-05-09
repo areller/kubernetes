@@ -129,6 +129,7 @@ func NewStatefulSetController(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: ssc.enqueueStatefulSet,
 			UpdateFunc: func(old, cur interface{}) {
+				fmt.Printf("@@@@arik4: statefulset reconciliation invoked!\n")
 				oldPS := old.(*apps.StatefulSet)
 				curPS := cur.(*apps.StatefulSet)
 				if oldPS.Status.Replicas != curPS.Status.Replicas {
@@ -142,7 +143,14 @@ func NewStatefulSetController(
 	ssc.setLister = setInformer.Lister()
 	ssc.setListerSynced = setInformer.Informer().HasSynced
 
-	// TODO: Watch volumes
+	pvcInformer.Informer().AddEventHandler(
+		cache.ResourceEventHandlerFuncs{
+			UpdateFunc: func(oldObj, newObj interface{}) {
+				ssc.updatePVC(logger, oldObj, newObj)
+			},
+		},
+	)
+
 	return ssc
 }
 
@@ -293,6 +301,36 @@ func (ssc *StatefulSetController) deletePod(logger klog.Logger, obj interface{})
 	}
 	logger.V(4).Info("Pod deleted.", "pod", klog.KObj(pod), "caller", utilruntime.GetCaller())
 	ssc.enqueueStatefulSet(set)
+}
+
+func (ssc *StatefulSetController) updatePVC(logger klog.Logger, old, cur interface{}) {
+	curPVC := cur.(*v1.PersistentVolumeClaim)
+	oldPVC := old.(*v1.PersistentVolumeClaim)
+
+	// we don't care about PVC updates unless they change the status
+	if reflect.DeepEqual(curPVC.Status, oldPVC.Status) {
+		return
+	}
+
+	curControllerRef := metav1.GetControllerOf(curPVC)
+	oldControllerRef := metav1.GetControllerOf(oldPVC)
+	controllerRefChanged := !reflect.DeepEqual(curControllerRef, oldControllerRef)
+	if controllerRefChanged && oldControllerRef != nil {
+		// The ControllerRef was changed. Sync the old controller, if any.
+		if set := ssc.resolveControllerRef(oldPVC.Namespace, oldControllerRef); set != nil {
+			ssc.enqueueStatefulSet(set)
+		}
+	}
+
+	// If it has a ControllerRef, that's all that matters.
+	if curControllerRef != nil {
+		set := ssc.resolveControllerRef(curPVC.Namespace, curControllerRef)
+		if set == nil {
+			return
+		}
+		logger.V(4).Info("PVC objectMeta updated", "pvc", klog.KObj(curPVC), "oldObjectMeta", oldPVC.ObjectMeta, "newObjectMeta", curPVC.ObjectMeta)
+		ssc.enqueueStatefulSet(set)
+	}
 }
 
 // getPodsForStatefulSet returns the Pods that a given StatefulSet should manage.

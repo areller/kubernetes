@@ -112,6 +112,7 @@ func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenA
 		"k8s.io/api/apps/v1.StatefulSetSpec":                                                              schema_k8sio_api_apps_v1_StatefulSetSpec(ref),
 		"k8s.io/api/apps/v1.StatefulSetStatus":                                                            schema_k8sio_api_apps_v1_StatefulSetStatus(ref),
 		"k8s.io/api/apps/v1.StatefulSetUpdateStrategy":                                                    schema_k8sio_api_apps_v1_StatefulSetUpdateStrategy(ref),
+		"k8s.io/api/apps/v1.VolumeClaimTemplateStatus":                                                    schema_k8sio_api_apps_v1_VolumeClaimTemplateStatus(ref),
 		"k8s.io/api/apps/v1beta1.ControllerRevision":                                                      schema_k8sio_api_apps_v1beta1_ControllerRevision(ref),
 		"k8s.io/api/apps/v1beta1.ControllerRevisionList":                                                  schema_k8sio_api_apps_v1beta1_ControllerRevisionList(ref),
 		"k8s.io/api/apps/v1beta1.Deployment":                                                              schema_k8sio_api_apps_v1beta1_Deployment(ref),
@@ -5541,12 +5542,26 @@ func schema_k8sio_api_apps_v1_StatefulSetStatus(ref common.ReferenceCallback) co
 							Format:      "int32",
 						},
 					},
+					"volumeClaimTemplates": {
+						SchemaProps: spec.SchemaProps{
+							Description: "The status of the volume claim templates in the statefulset.",
+							Type:        []string{"array"},
+							Items: &spec.SchemaOrArray{
+								Schema: &spec.Schema{
+									SchemaProps: spec.SchemaProps{
+										Default: map[string]interface{}{},
+										Ref:     ref("k8s.io/api/apps/v1.VolumeClaimTemplateStatus"),
+									},
+								},
+							},
+						},
+					},
 				},
 				Required: []string{"replicas"},
 			},
 		},
 		Dependencies: []string{
-			"k8s.io/api/apps/v1.StatefulSetCondition"},
+			"k8s.io/api/apps/v1.StatefulSetCondition", "k8s.io/api/apps/v1.VolumeClaimTemplateStatus"},
 	}
 }
 
@@ -5576,6 +5591,39 @@ func schema_k8sio_api_apps_v1_StatefulSetUpdateStrategy(ref common.ReferenceCall
 		},
 		Dependencies: []string{
 			"k8s.io/api/apps/v1.RollingUpdateStatefulSetStrategy"},
+	}
+}
+
+func schema_k8sio_api_apps_v1_VolumeClaimTemplateStatus(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Type: []string{"object"},
+				Properties: map[string]spec.Schema{
+					"templateName": {
+						SchemaProps: spec.SchemaProps{
+							Description: "the name of the late that this status pertains to",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
+					"finishedReconciliationGeneration": {
+						SchemaProps: spec.SchemaProps{
+							Description: "the last generation where all claims of this template were fully reconciled with the storage driver.",
+							Type:        []string{"integer"},
+							Format:      "int64",
+						},
+					},
+					"readyReplicas": {
+						SchemaProps: spec.SchemaProps{
+							Description: "the number of replicas for which this template is fully reconciled with the storage driver.",
+							Type:        []string{"integer"},
+							Format:      "int32",
+						},
+					},
+				},
+			},
+		},
 	}
 }
 

@@ -22,9 +22,10 @@ import (
 	"strings"
 
 	apps "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	errorutils "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
@@ -46,6 +47,7 @@ type StatefulPodControlObjectManager interface {
 	CreateClaim(claim *v1.PersistentVolumeClaim) error
 	GetClaim(namespace, claimName string) (*v1.PersistentVolumeClaim, error)
 	UpdateClaim(claim *v1.PersistentVolumeClaim) error
+	PatchClaim(namespace, claimName string, data []byte) error
 }
 
 // StatefulPodControl defines the interface that StatefulSetController uses to create, update, and delete Pods,
@@ -109,6 +111,11 @@ func (om *realStatefulPodControlObjectManager) GetClaim(namespace, claimName str
 
 func (om *realStatefulPodControlObjectManager) UpdateClaim(claim *v1.PersistentVolumeClaim) error {
 	_, err := om.client.CoreV1().PersistentVolumeClaims(claim.Namespace).Update(context.TODO(), claim, metav1.UpdateOptions{})
+	return err
+}
+
+func (om *realStatefulPodControlObjectManager) PatchClaim(namespace, claimName string, data []byte) error {
+	_, err := om.client.CoreV1().PersistentVolumeClaims(namespace).Patch(context.TODO(), claimName, types.StrategicMergePatchType, data, metav1.PatchOptions{})
 	return err
 }
 
@@ -243,7 +250,8 @@ func (spc *StatefulPodControl) UpdatePodClaimForRetentionPolicy(ctx context.Cont
 		default:
 			if !claimOwnerMatchesSetAndPod(claim, set, pod) {
 				claim = claim.DeepCopy() // Make a copy so we don't mutate the shared cache.
-				needsUpdate := updateClaimOwnerRefForSetAndPod(claim, set, pod)
+				//needsUpdate := updateClaimOwnerRefForSetAndPod(claim, set, pod)
+				needsUpdate := false
 				if needsUpdate {
 					err := spc.objectMgr.UpdateClaim(claim)
 					if err != nil {
@@ -342,6 +350,9 @@ func (spc *StatefulPodControl) createPersistentVolumeClaims(set *apps.StatefulSe
 		pvc, err := spc.objectMgr.GetClaim(claim.Namespace, claim.Name)
 		switch {
 		case apierrors.IsNotFound(err):
+			ref := *metav1.NewControllerRef(set, controllerKind)
+			*ref.BlockOwnerDeletion = false
+			claim.OwnerReferences = append(claim.OwnerReferences, ref)
 			err := spc.objectMgr.CreateClaim(&claim)
 			if err != nil {
 				errs = append(errs, fmt.Errorf("failed to create PVC %s: %s", claim.Name, err))

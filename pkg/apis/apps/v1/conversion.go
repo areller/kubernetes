@@ -144,6 +144,21 @@ func Convert_v1_StatefulSetSpec_To_apps_StatefulSetSpec(in *appsv1.StatefulSetSp
 	return nil
 }
 
+func Convert_apps_StatefulSetStatus_To_v1_StatefulSetStatus(in *apps.StatefulSetStatus, out *appsv1.StatefulSetStatus, s conversion.Scope) error {
+	if err := autoConvert_apps_StatefulSetStatus_To_v1_StatefulSetStatus(in, out, s); err != nil {
+		return err
+	}
+	out.VolumeClaimTemplates = make([]appsv1.VolumeClaimTemplateStatus, len(in.VolumeClaimTemplates))
+	for k, v := range in.VolumeClaimTemplates {
+		out.VolumeClaimTemplates[k] = appsv1.VolumeClaimTemplateStatus{
+			TemplateName:                     v.TemplateName,
+			FinishedReconciliationGeneration: v.FinishedReconciliationGeneration,
+			ReadyReplicas:                    v.ReadyReplicas,
+		}
+	}
+	return nil
+}
+
 // Convert_apps_StatefulSetSpec_To_v1_StatefulSetSpec augments auto-conversion to preserve < 1.17 behavior
 // setting apiVersion/kind in nested persistent volume claim objects.
 func Convert_apps_StatefulSetSpec_To_v1_StatefulSetSpec(in *apps.StatefulSetSpec, out *appsv1.StatefulSetSpec, s conversion.Scope) error {

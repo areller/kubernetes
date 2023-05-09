@@ -28,7 +28,9 @@ source "$KUBE_ROOT/build/common.sh"
 KUBE_RUN_COPY_OUTPUT="${KUBE_RUN_COPY_OUTPUT:-y}"
 
 kube::build::verify_prereqs
+echo "abc"
 kube::build::build_image
+echo "abc2"
 
 if [[ ${KUBE_RUN_COPY_OUTPUT} =~ ^[yY]$ ]]; then
   kube::log::status "Output from this container will be rsynced out upon completion. Set KUBE_RUN_COPY_OUTPUT=n to disable."
@@ -36,7 +38,9 @@ else
   kube::log::status "Output from this container will NOT be rsynced out upon completion. Set KUBE_RUN_COPY_OUTPUT=y to enable."
 fi
 
+echo "abc3"
 kube::build::run_build_command "$@"
+echo "abc4"
 
 if [[ ${KUBE_RUN_COPY_OUTPUT} =~ ^[yY]$ ]]; then
   kube::build::copy_output

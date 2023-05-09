@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"regexp"
 	"strconv"
 
@@ -582,7 +583,8 @@ func inconsistentStatus(set *apps.StatefulSet, status *apps.StatefulSetStatus) b
 		status.UpdatedReplicas != set.Status.UpdatedReplicas ||
 		status.CurrentRevision != set.Status.CurrentRevision ||
 		status.AvailableReplicas != set.Status.AvailableReplicas ||
-		status.UpdateRevision != set.Status.UpdateRevision
+		status.UpdateRevision != set.Status.UpdateRevision ||
+		!reflect.DeepEqual(status.VolumeClaimTemplates, set.Status.VolumeClaimTemplates)
 }
 
 // completeRollingUpdate completes a rolling update when all of set's replica Pods have been updated

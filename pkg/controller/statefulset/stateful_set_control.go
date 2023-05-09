@@ -18,7 +18,10 @@ package statefulset
 
 import (
 	"context"
+	"fmt"
 	"sort"
+	"strconv"
+	"time"
 
 	apps "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -77,6 +80,21 @@ type defaultStatefulSetControl struct {
 // understand the consistency implications of having unpredictable numbers of pods available.
 func (ssc *defaultStatefulSetControl) UpdateStatefulSet(ctx context.Context, set *apps.StatefulSet, pods []*v1.Pod) (*apps.StatefulSetStatus, error) {
 	set = set.DeepCopy() // set is modified when a new revision is created in performUpdate. Make a copy now to avoid mutation errors.
+
+	if set.Annotations != nil {
+		if val1, ok := set.Annotations["key_exit"]; ok {
+			if val1 == "exit" {
+				return nil, nil
+			}
+		}
+		if val1, ok := set.Annotations["key_sleep"]; ok {
+			secs, err := strconv.Atoi(val1)
+			if err != nil {
+				return nil, err
+			}
+			time.Sleep(time.Duration(secs) * time.Second)
+		}
+	}
 
 	// list all revisions and sort them
 	revisions, err := ssc.ListRevisions(set)
@@ -303,6 +321,15 @@ func (ssc *defaultStatefulSetControl) updateStatefulSet(
 	status.UpdateRevision = updateRevision.Name
 	status.CollisionCount = new(int32)
 	*status.CollisionCount = collisionCount
+	if currentSet.Status.VolumeClaimTemplates != nil {
+		// todo, if structure of PVC templates changes, we should handle remapping here
+		status.VolumeClaimTemplates = make([]apps.VolumeClaimTemplateStatus, len(currentSet.Status.VolumeClaimTemplates))
+		for k, v := range currentSet.Status.VolumeClaimTemplates {
+			status.VolumeClaimTemplates[k] = v
+		}
+	} else {
+		status.VolumeClaimTemplates = make([]apps.VolumeClaimTemplateStatus, len(set.Spec.VolumeClaimTemplates))
+	}
 
 	replicaCount := int(*set.Spec.Replicas)
 	// slice that will contain all Pods such that getStartOrdinal(set) <= getOrdinal(pod) <= getEndOrdinal(set)
@@ -393,6 +420,11 @@ func (ssc *defaultStatefulSetControl) updateStatefulSet(
 
 	monotonic := !allowsBurst(set)
 
+	for k, pvcTpl := range set.Spec.VolumeClaimTemplates {
+		status.VolumeClaimTemplates[k].TemplateName = pvcTpl.Name
+		status.VolumeClaimTemplates[k].ReadyReplicas = 0
+	}
+
 	// Examine each replica with respect to its ordinal
 	for i := range replicas {
 		// delete and recreate failed pods
@@ -448,6 +480,39 @@ func (ssc *defaultStatefulSetControl) updateStatefulSet(
 			continue
 		}
 
+		// do PVC reconciliation after pod is fully ready and healthy
+		if getPodRevision(replicas[i]) == updateRevision.Name && isHealthy(replicas[i]) {
+			ordinal := getOrdinal(replicas[i])
+			fmt.Printf("@@@@arik1: pod %d of sts %s is fully ready.\n", ordinal, set.Name)
+			for k, pvcTpl := range set.Spec.VolumeClaimTemplates {
+				claimName := getPersistentVolumeClaimName(set, &pvcTpl, ordinal)
+				pvc, err := ssc.podControl.objectMgr.GetClaim(set.Namespace, claimName)
+				if err != nil && errors.IsNotFound(err) {
+					// this shouldn't happen. record error later
+					return &status, err
+				} else if err != nil {
+					// record error later
+					return &status, err
+				}
+
+				if !pvc.Spec.Resources.Requests.Storage().Equal(*pvcTpl.Spec.Resources.Requests.Storage()) {
+					fmt.Printf("@@@@arik1: pvc %s of pod %d in sts %s is not up to date. patching...\n", claimName, ordinal, set.Name)
+					patch := fmt.Sprintf(`{"spec": {"resources": {"requests": {"storage": "%s"}}}}`, pvcTpl.Spec.Resources.Requests.Storage().String())
+					err = ssc.podControl.objectMgr.PatchClaim(set.Namespace, claimName, []byte(patch))
+					if err != nil {
+						ssc.podControl.recorder.Eventf(set, v1.EventTypeWarning, "FailedToPatchPVC", "StatefulSet %s/%s failed to patch PVC %s of Pod %d: %v", set.Namespace, set.Name, claimName, ordinal, err)
+						fmt.Printf("@@@@arik1: failed to patch pvc %s of pod %d in sts %s: %v\n", claimName, ordinal, set.Name, err)
+						return &status, err
+					}
+				}
+
+				if pvc.Status.Capacity.Storage() != nil && pvc.Status.Capacity.Storage().Equal(*pvcTpl.Spec.Resources.Requests.Storage()) {
+					fmt.Printf("@@@@arik1: pvc %s of pod %d in sts %s request matches status.\n", claimName, ordinal, set.Name)
+					status.VolumeClaimTemplates[k].ReadyReplicas += 1
+				}
+			}
+		}
+
 		// If the Pod is in pending state then trigger PVC creation to create missing PVCs
 		if isPending(replicas[i]) {
 			klog.V(4).Infof(
@@ -499,6 +564,19 @@ func (ssc *defaultStatefulSetControl) updateStatefulSet(
 		replica := replicas[i].DeepCopy()
 		if err := ssc.podControl.UpdateStatefulPod(ctx, updateSet, replica); err != nil {
 			return &status, err
+		}
+	}
+
+	for k, pvcStatus := range status.VolumeClaimTemplates {
+		fmt.Printf("@@@@arik2: pvc %s of sts %s has %d ready replicas and the replicaCount is %d\n", pvcStatus.TemplateName, set.Name, pvcStatus.ReadyReplicas, replicaCount)
+		if pvcStatus.ReadyReplicas == int32(replicaCount) {
+			fmt.Printf("@@@@arik1: pvc %s of sts %s is fully ready (ready replicas matches replicas).\n", pvcStatus.TemplateName, set.Name)
+			status.VolumeClaimTemplates[k].FinishedReconciliationGeneration = &updateSet.Generation
+			// go func() {
+			// 	time.Sleep(30 * time.Second)
+			// 	fmt.Println("@@@@arik4: sending event.....")
+			// 	ssc.podControl.recorder.Event(set, v1.EventTypeWarning, "Failed Update", "Failed something something something..... 123")
+			// }()
 		}
 	}
 

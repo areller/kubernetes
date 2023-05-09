@@ -187,12 +187,28 @@ func ValidateStatefulSetUpdate(statefulSet, oldStatefulSet *apps.StatefulSet, op
 	newStatefulSetClone.Spec.MinReadySeconds = oldStatefulSet.Spec.MinReadySeconds // +k8s:verify-mutation:reason=clone
 	newStatefulSetClone.Spec.Ordinals = oldStatefulSet.Spec.Ordinals               // +k8s:verify-mutation:reason=clone
 
+	oldStatefulSetPVCRequestsMap := getPVCTemplatesRequestsMap(oldStatefulSet.Spec.VolumeClaimTemplates)
+	for idx, _ := range newStatefulSetClone.Spec.VolumeClaimTemplates {
+		oldRequests, ok := oldStatefulSetPVCRequestsMap[newStatefulSetClone.Spec.VolumeClaimTemplates[idx].Name]
+		if ok {
+			newStatefulSetClone.Spec.VolumeClaimTemplates[idx].Spec.Resources.Requests = oldRequests.DeepCopy()
+		}
+	}
+
 	newStatefulSetClone.Spec.PersistentVolumeClaimRetentionPolicy = oldStatefulSet.Spec.PersistentVolumeClaimRetentionPolicy // +k8s:verify-mutation:reason=clone
 	if !apiequality.Semantic.DeepEqual(newStatefulSetClone.Spec, oldStatefulSet.Spec) {
 		allErrs = append(allErrs, field.Forbidden(field.NewPath("spec"), "updates to statefulset spec for fields other than 'replicas', 'ordinals', 'template', 'updateStrategy', 'persistentVolumeClaimRetentionPolicy' and 'minReadySeconds' are forbidden"))
 	}
 
 	return allErrs
+}
+
+func getPVCTemplatesRequestsMap(pvcTemplates []api.PersistentVolumeClaim) map[string]api.ResourceList {
+	ret := make(map[string]api.ResourceList)
+	for _, pvcTemplate := range pvcTemplates {
+		ret[pvcTemplate.Name] = pvcTemplate.Spec.Resources.Requests
+	}
+	return ret
 }
 
 // ValidateStatefulSetStatus validates a StatefulSetStatus.

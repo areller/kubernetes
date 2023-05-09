@@ -17,7 +17,7 @@ limitations under the License.
 package v1
 
 import (
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -265,6 +265,15 @@ type StatefulSetSpec struct {
 	Ordinals *StatefulSetOrdinals `json:"ordinals,omitempty" protobuf:"bytes,11,opt,name=ordinals"`
 }
 
+type VolumeClaimTemplateStatus struct {
+	// the name of the late that this status pertains to
+	TemplateName string `json:"templateName" protobuf:"bytes,1,opt,name=templateName"`
+	// the last generation where all claims of this template were fully reconciled with the storage driver.
+	FinishedReconciliationGeneration *int64 `json:"finishedReconciliationGeneration,omitempty" protobuf:"varint,2,opt,name=finishedReconciliationGeneration"`
+	// the number of replicas for which this template is fully reconciled with the storage driver.
+	ReadyReplicas int32 `json:"readyReplicas" protobuf:"varint,3,opt,name=readyReplicas"`
+}
+
 // StatefulSetStatus represents the current state of a StatefulSet.
 type StatefulSetStatus struct {
 	// observedGeneration is the most recent generation observed for this StatefulSet. It corresponds to the
@@ -309,6 +318,10 @@ type StatefulSetStatus struct {
 	// Total number of available pods (ready for at least minReadySeconds) targeted by this statefulset.
 	// +optional
 	AvailableReplicas int32 `json:"availableReplicas" protobuf:"varint,11,opt,name=availableReplicas"`
+
+	// The status of the volume claim templates in the statefulset.
+	// +optional
+	VolumeClaimTemplates []VolumeClaimTemplateStatus `json:"volumeClaimTemplates,omitempty" protobuf:"bytes,12,rep,name=volumeClaimTemplates"`
 }
 
 type StatefulSetConditionType string

@@ -243,6 +243,15 @@ type StatefulSetSpec struct {
 	Ordinals *StatefulSetOrdinals
 }
 
+type VolumeClaimTemplateStatus struct {
+	// the name of the PVC template that this status pertains to
+	TemplateName string
+	// the last generation where all claims of this template were fully reconciled with the storage driver.
+	FinishedReconciliationGeneration *int64
+	// the number of replicas for which this template is fully reconciled with the storage driver.
+	ReadyReplicas int32
+}
+
 // StatefulSetStatus represents the current state of a StatefulSet.
 type StatefulSetStatus struct {
 	// observedGeneration is the most recent generation observed for this StatefulSet. It corresponds to the
@@ -284,6 +293,10 @@ type StatefulSetStatus struct {
 	// Total number of available pods (ready for at least minReadySeconds) targeted by this statefulset.
 	// +optional
 	AvailableReplicas int32
+
+	// The status of the volume claim templates in the statefulset.
+	// +optional
+	VolumeClaimTemplates []VolumeClaimTemplateStatus
 }
 
 // StatefulSetConditionType describes the condition types of StatefulSets.

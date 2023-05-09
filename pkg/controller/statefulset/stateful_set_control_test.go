@@ -18,6 +18,7 @@ package statefulset
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -37,6 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/informers"
 	appsinformers "k8s.io/client-go/informers/apps/v1"
@@ -2460,6 +2462,40 @@ func (om *fakeObjectManager) UpdateClaim(claim *v1.PersistentVolumeClaim) error 
 	}
 	om.claimsIndexer.Update(claim)
 	return nil
+}
+
+func (om *fakeObjectManager) PatchClaim(namespace, claimName string, data []byte) error {
+	claim, err := om.claimsLister.PersistentVolumeClaims(namespace).Get(claimName)
+	if err != nil {
+		return fmt.Errorf("failed to find claim %s in namespace %s: %w", claimName, namespace, err)
+	}
+
+	claimBytes, err := json.Marshal(claim)
+	if err != nil {
+		return err
+	}
+
+	modified, err := strategicpatch.StrategicMergePatch(claimBytes, data, claim)
+	if err != nil {
+		return fmt.Errorf("failed to strategic merge patch claim %s in namespace %s: %w", claimName, namespace, err)
+	}
+
+	var modifiedClaim v1.PersistentVolumeClaim
+	err = json.Unmarshal(modified, &modifiedClaim)
+	if err != nil {
+		return err
+	}
+
+	modifiedStorage := *modifiedClaim.Spec.Resources.Requests.Storage()
+	currentStorage := *claim.Spec.Resources.Requests.Storage()
+
+	if modifiedStorage.Cmp(currentStorage) < 0 {
+		return fmt.Errorf("resized PVC size cannot be smaller that current size")
+	}
+
+	claim.Spec = modifiedClaim.Spec
+
+	return om.claimsIndexer.Update(claim)
 }
 
 func (om *fakeObjectManager) SetCreateStatefulPodError(err error, after int) {
